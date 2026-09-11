@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="SpendFlow.Api/SpendFlow.Api.csproj" />
+  <Project Path="SpendFlow.Tests/SpendFlow.Tests.csproj" />
+</Solution>
