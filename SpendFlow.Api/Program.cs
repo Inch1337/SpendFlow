@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SpendFlow.Api.Data;
+using SpendFlow.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,8 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<ExpenseService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
