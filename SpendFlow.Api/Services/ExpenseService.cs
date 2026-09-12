@@ -16,6 +16,26 @@ public class ExpenseService
         _logger = logger;
     }
 
+    public async Task<List<ExpenseResponse>> GetAllAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Expenses
+            .AsNoTracking()
+            .OrderByDescending(expense => expense.Date)
+            .ThenByDescending(expense => expense.Id)
+            .Select(expense => new ExpenseResponse
+            {
+                Id = expense.Id,
+                Description = expense.Description,
+                Amount = expense.Amount,
+                Date = expense.Date,
+                Category = expense.Category,
+                CreatedAt = expense.CreatedAt,
+                UpdatedAt = expense.UpdatedAt
+            })
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<ExpenseResponse?> GetByIdAsync(
         int id,
         CancellationToken cancellationToken = default)

@@ -1,6 +1,11 @@
 @SpendFlow.Api_HostAddress = http://localhost:5110
 @expenseId = 1
 
+GET {{SpendFlow.Api_HostAddress}}/api/expenses
+Accept: application/json
+
+###
+
 POST {{SpendFlow.Api_HostAddress}}/api/expenses
 Content-Type: application/json
 Accept: application/json

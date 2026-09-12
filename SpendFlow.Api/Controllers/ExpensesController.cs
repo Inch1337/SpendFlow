@@ -15,6 +15,16 @@ public class ExpensesController : ControllerBase
         _expenseService = expenseService;
     }
 
+    [HttpGet]
+    [ProducesResponseType(typeof(List<ExpenseResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<List<ExpenseResponse>>> GetAll(
+        CancellationToken cancellationToken)
+    {
+        var response = await _expenseService.GetAllAsync(cancellationToken);
+        return Ok(response);
+    }
+
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ExpenseResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
