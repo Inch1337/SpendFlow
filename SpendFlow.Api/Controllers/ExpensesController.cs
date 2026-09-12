@@ -17,11 +17,13 @@ public class ExpensesController : ControllerBase
 
     [HttpGet]
     [ProducesResponseType(typeof(List<ExpenseResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<List<ExpenseResponse>>> GetAll(
+        [FromQuery] ExpenseQueryRequest request,
         CancellationToken cancellationToken)
     {
-        var response = await _expenseService.GetAllAsync(cancellationToken);
+        var response = await _expenseService.GetAllAsync(request, cancellationToken);
         return Ok(response);
     }
 

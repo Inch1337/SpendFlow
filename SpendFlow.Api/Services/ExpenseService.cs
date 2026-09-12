@@ -17,10 +17,38 @@ public class ExpenseService
     }
 
     public async Task<List<ExpenseResponse>> GetAllAsync(
+        ExpenseQueryRequest request,
         CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Expenses
-            .AsNoTracking()
+        var query = _dbContext.Expenses.AsNoTracking();
+
+        if (request.DateFrom.HasValue)
+        {
+            query = query.Where(expense => expense.Date >= request.DateFrom.Value);
+        }
+
+        if (request.DateTo.HasValue)
+        {
+            query = query.Where(expense => expense.Date <= request.DateTo.Value);
+        }
+
+        if (request.Category.HasValue)
+        {
+            query = query.Where(expense => expense.Category == request.Category.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            // Treat LIKE wildcard and escape characters as literal search text.
+            var search = request.Search.Trim()
+                .Replace("\\", "\\\\")
+                .Replace("%", "\\%")
+                .Replace("_", "\\_");
+            var pattern = $"%{search}%";
+            query = query.Where(expense => EF.Functions.ILike(expense.Description, pattern, "\\"));
+        }
+
+        return await query
             .OrderByDescending(expense => expense.Date)
             .ThenByDescending(expense => expense.Id)
             .Select(expense => new ExpenseResponse

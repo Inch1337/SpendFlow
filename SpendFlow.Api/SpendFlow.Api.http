@@ -6,6 +6,48 @@ Accept: application/json
 
 ###
 
+GET {{SpendFlow.Api_HostAddress}}/api/expenses?dateFrom=2026-01-01&dateTo=2026-01-31
+Accept: application/json
+
+###
+
+GET {{SpendFlow.Api_HostAddress}}/api/expenses?category=Food
+Accept: application/json
+
+###
+
+GET {{SpendFlow.Api_HostAddress}}/api/expenses?search=coffee
+Accept: application/json
+
+###
+
+GET {{SpendFlow.Api_HostAddress}}/api/expenses?dateFrom=2026-01-01&dateTo=2026-01-31&category=Food&search=coffee
+Accept: application/json
+
+###
+
+# Invalid date range: expected 400.
+GET {{SpendFlow.Api_HostAddress}}/api/expenses?dateFrom=2026-02-01&dateTo=2026-01-31
+Accept: application/json
+
+###
+
+# Literal percent sign, underscore and backslash (URL-encoded).
+GET {{SpendFlow.Api_HostAddress}}/api/expenses?search=%25
+Accept: application/json
+
+###
+
+GET {{SpendFlow.Api_HostAddress}}/api/expenses?search=%5F
+Accept: application/json
+
+###
+
+GET {{SpendFlow.Api_HostAddress}}/api/expenses?search=%5C
+Accept: application/json
+
+###
+
 POST {{SpendFlow.Api_HostAddress}}/api/expenses
 Content-Type: application/json
 Accept: application/json
