@@ -18,3 +18,8 @@ GET {{SpendFlow.Api_HostAddress}}/api/expenses/{{expenseId}}
 Accept: application/json
 
 ###
+
+DELETE {{SpendFlow.Api_HostAddress}}/api/expenses/{{expenseId}}
+Accept: application/json
+
+###

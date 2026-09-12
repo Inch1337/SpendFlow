@@ -41,6 +41,25 @@ public class ExpenseService
         };
     }
 
+    public async Task<bool> DeleteAsync(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        var expense = await _dbContext.Expenses
+            .FirstOrDefaultAsync(expense => expense.Id == id, cancellationToken);
+
+        if (expense is null)
+        {
+            return false;
+        }
+
+        _dbContext.Expenses.Remove(expense);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Deleted expense {ExpenseId}", expense.Id);
+        return true;
+    }
+
     // The caller must validate the request using DataAnnotations before calling this method.
     public async Task<ExpenseResponse> CreateAsync(
         CreateExpenseRequest request,
