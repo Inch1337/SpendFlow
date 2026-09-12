@@ -1,6 +1,20 @@
 @SpendFlow.Api_HostAddress = http://localhost:5110
+@expenseId = 1
 
-GET {{SpendFlow.Api_HostAddress}}/weatherforecast/
+POST {{SpendFlow.Api_HostAddress}}/api/expenses
+Content-Type: application/json
+Accept: application/json
+
+{
+  "description": "  Coffee  ",
+  "amount": 150.50,
+  "date": "2026-01-15",
+  "category": "Food"
+}
+
+###
+
+GET {{SpendFlow.Api_HostAddress}}/api/expenses/{{expenseId}}
 Accept: application/json
 
 ###
