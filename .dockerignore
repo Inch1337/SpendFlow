@@ -1,0 +1,16 @@
+.git
+.vs
+.idea
+.vscode
+.codex
+.agents
+**/bin
+**/obj
+**/TestResults
+**/node_modules
+**/*.user
+**/*.suo
+**/*.log
+**/.env
+**/.env.*
+SpendFlow.Tests

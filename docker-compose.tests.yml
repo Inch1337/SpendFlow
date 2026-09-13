@@ -1,0 +1,19 @@
+name: spendflow-tests
+
+services:
+  postgres-tests:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: spendflow_tests
+      POSTGRES_USER: spendflow_tests
+      POSTGRES_PASSWORD: spendflow_tests
+    ports:
+      - "127.0.0.1:55432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spendflow_tests -d spendflow_tests"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s

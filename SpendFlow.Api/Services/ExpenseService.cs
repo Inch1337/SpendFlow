@@ -39,7 +39,6 @@ public class ExpenseService
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
-            // Treat LIKE wildcard and escape characters as literal search text.
             var search = request.Search.Trim()
                 .Replace("\\", "\\\\")
                 .Replace("%", "\\%")
@@ -62,6 +61,47 @@ public class ExpenseService
                 UpdatedAt = expense.UpdatedAt
             })
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<ExpenseSummaryResponse> GetSummaryAsync(
+        ExpenseSummaryQueryRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.Expenses.AsNoTracking();
+
+        if (request.DateFrom.HasValue)
+        {
+            query = query.Where(expense => expense.Date >= request.DateFrom.Value);
+        }
+
+        if (request.DateTo.HasValue)
+        {
+            query = query.Where(expense => expense.Date <= request.DateTo.Value);
+        }
+
+        var categoryTotals = await query
+            .GroupBy(expense => expense.Category)
+            .Select(group => new ExpenseCategorySummaryResponse
+            {
+                Category = group.Key,
+                TotalAmount = group.Sum(expense => expense.Amount)
+            })
+            .ToListAsync(cancellationToken);
+
+        var byCategory = Enum.GetValues<ExpenseCategory>()
+            .Select(category => new ExpenseCategorySummaryResponse
+            {
+                Category = category,
+                TotalAmount = categoryTotals
+                    .FirstOrDefault(total => total.Category == category)?.TotalAmount ?? 0m
+            })
+            .ToList();
+
+        return new ExpenseSummaryResponse
+        {
+            TotalAmount = byCategory.Sum(category => category.TotalAmount),
+            ByCategory = byCategory
+        };
     }
 
     public async Task<ExpenseResponse?> GetByIdAsync(
@@ -108,7 +148,6 @@ public class ExpenseService
         return true;
     }
 
-    // The caller must validate the request using DataAnnotations before calling this method.
     public async Task<ExpenseResponse> CreateAsync(
         CreateExpenseRequest request,
         CancellationToken cancellationToken = default)

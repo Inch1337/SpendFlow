@@ -27,6 +27,18 @@ public class ExpensesController : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet("summary")]
+    [ProducesResponseType(typeof(ExpenseSummaryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<ExpenseSummaryResponse>> GetSummary(
+        [FromQuery] ExpenseSummaryQueryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _expenseService.GetSummaryAsync(request, cancellationToken);
+        return Ok(response);
+    }
+
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ExpenseResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
