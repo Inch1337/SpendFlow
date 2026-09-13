@@ -50,6 +50,16 @@ form {
     margin-bottom: 16px;
 }
 
+.filters-form {
+    margin-bottom: 24px;
+}
+
+.filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 label {
     display: block;
     margin-bottom: 4px;
@@ -125,4 +135,32 @@ th {
     border-radius: 4px;
     background: #fff0ee;
     color: #8a1c13;
+}
+
+.category-chart {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0 0;
+}
+
+.category-chart li {
+    margin-bottom: 16px;
+}
+
+.category-label {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.bar-track {
+    height: 16px;
+    background: #eee;
+}
+
+.bar-fill {
+    height: 100%;
+    background: #235a91;
 }

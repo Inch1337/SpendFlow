@@ -51,19 +51,33 @@ public class CreateExpenseRequestTests
     {
         { -1m, false },
         { 0m, false },
-        { 0.0000000000000000000000000001m, true },
-        { 12.345m, true },
-        { decimal.MaxValue, true }
+        { 0.0000000000000000000000000001m, false },
+        { 0.009m, false },
+        { 0.01m, true },
+        { 12m, true },
+        { 12.3m, true },
+        { 12.30m, true },
+        { 12.300m, true },
+        { 0.29m, true },
+        { 12.345m, false },
+        { 12.300000000000000000000000001m, false },
+        { 999999999.99m, true },
+        { 999999999.991m, false },
+        { 1000000000m, false },
+        { decimal.MaxValue, false }
     };
 
     [Theory]
     [MemberData(nameof(AmountCases))]
-    public void Amount_AcceptsOnlyPositiveValues(decimal amount, bool expectedValid)
+    public void Amount_EnforcesRangeAndTwoDecimalPlaces(decimal amount, bool expectedValid)
     {
         var request = ValidRequest();
         request.Amount = amount;
 
-        Assert.Equal(expectedValid, Validate(request).Count == 0);
+        if (expectedValid)
+            Assert.Empty(Validate(request));
+        else
+            AssertInvalid(request, nameof(request.Amount));
     }
 
     [Theory]

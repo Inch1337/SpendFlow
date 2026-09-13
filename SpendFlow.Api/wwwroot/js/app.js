@@ -8,6 +8,18 @@ const descriptionInput = document.getElementById("description");
 const amountInput = document.getElementById("amount");
 const dateInput = document.getElementById("date");
 const categoryInput = document.getElementById("category");
+const filtersForm = document.getElementById("filters-form");
+const filterDateFrom = document.getElementById("filter-date-from");
+const filterDateTo = document.getElementById("filter-date-to");
+const filterCategory = document.getElementById("filter-category");
+const filterSearch = document.getElementById("filter-search");
+const resetFiltersButton = document.getElementById("reset-filters-button");
+const currentMonthButton = document.getElementById("current-month-button");
+const summaryPeriod = document.getElementById("summary-period");
+const summaryMessage = document.getElementById("summary-message");
+const summaryContent = document.getElementById("summary-content");
+const summaryTotal = document.getElementById("summary-total");
+const categoryChart = document.getElementById("category-chart");
 
 const categoryNames = {
     Food: "Еда",
@@ -19,6 +31,8 @@ const categoryNames = {
 };
 
 let busy = false;
+// Keep applied filters separate from edits that have not been submitted yet.
+let appliedFilters = {};
 
 function setBusy(value) {
     busy = value;
@@ -74,10 +88,31 @@ async function requestApi(url, options = {}) {
     return response.json();
 }
 
+function formatAmount(amount) {
+    return amount.toFixed(2).replace(".", ",");
+}
+
+function isValidAmount(value) {
+    const amount = Number(value);
+    if (!Number.isFinite(amount) || amount < 0.01 || amount > 999999999.99) {
+        return false;
+    }
+
+    const match = /^(\d+\.?\d*|\.\d+)(?:e([+-]?\d+))?$/i.exec(value);
+    if (!match) return false;
+
+    // Count decimal places in the original input, including scientific notation.
+    // Trailing zeros do not change the amount: 12.300 is the same as 12.30.
+    const fraction = match[1].split(".")[1] ?? "";
+    const trailingZeros = match[1].replace(".", "").match(/0*$/)[0].length;
+    const decimalPlaces = fraction.length - Number(match[2] ?? 0) - trailingZeros;
+    return decimalPlaces <= 2;
+}
+
 function renderExpenses(expenses) {
     expensesList.replaceChildren();
     if (expenses.length === 0) {
-        showTableMessage("Расходов пока нет");
+        showTableMessage("Расходы не найдены");
         return;
     }
 
@@ -88,7 +123,7 @@ function renderExpenses(expenses) {
             expense.date.split("-").reverse().join("."),
             expense.description,
             categoryNames[expense.category] ?? expense.category,
-            String(expense.amount).replace(".", ",")
+            formatAmount(expense.amount)
         ];
 
         values.forEach((value, index) => {
@@ -115,11 +150,142 @@ function renderExpenses(expenses) {
 async function loadExpenses() {
     showTableMessage("Загрузка расходов…");
     try {
-        const expenses = await requestApi("/api/expenses");
+        const parameters = new URLSearchParams();
+        for (const [name, value] of Object.entries(appliedFilters)) {
+            if (value) {
+                parameters.set(name, value);
+            }
+        }
+        const query = parameters.toString();
+        const expenses = await requestApi(query ? `/api/expenses?${query}` : "/api/expenses");
         renderExpenses(expenses);
     } catch (error) {
         showTableMessage("Не удалось загрузить расходы");
         showError(error.message);
+    }
+}
+
+function renderSummary(summary) {
+    summaryTotal.textContent = formatAmount(summary.totalAmount);
+    categoryChart.replaceChildren();
+    const maximum = Math.max(0, ...summary.byCategory.map(item => item.totalAmount));
+
+    for (const item of summary.byCategory) {
+        const row = document.createElement("li");
+        const label = document.createElement("div");
+        label.className = "category-label";
+        const name = document.createElement("span");
+        name.textContent = categoryNames[item.category] ?? item.category;
+        const amount = document.createElement("span");
+        amount.textContent = formatAmount(item.totalAmount);
+        label.append(name, amount);
+
+        // Exact amounts are shown above the bars; zero totals avoid division by zero.
+        const track = document.createElement("div");
+        track.className = "bar-track";
+        track.setAttribute("aria-hidden", "true");
+        const fill = document.createElement("div");
+        fill.className = "bar-fill";
+        fill.style.width = `${maximum > 0 ? item.totalAmount / maximum * 100 : 0}%`;
+        track.append(fill);
+        row.append(label, track);
+        categoryChart.append(row);
+    }
+
+    summaryMessage.textContent = summary.totalAmount === 0 ? "За этот период расходов нет." : "";
+    summaryMessage.hidden = summary.totalAmount !== 0;
+    summaryContent.hidden = false;
+}
+
+async function loadSummary() {
+    summaryContent.hidden = true;
+    summaryMessage.hidden = false;
+    summaryMessage.textContent = "Загрузка статистики…";
+
+    const { dateFrom, dateTo } = appliedFilters;
+    const from = dateFrom ? dateFrom.split("-").reverse().join(".") : "";
+    const to = dateTo ? dateTo.split("-").reverse().join(".") : "";
+    summaryPeriod.textContent = from && to ? `Период: ${from} — ${to}`
+        : from ? `Начиная с ${from}` : to ? `По ${to} включительно` : "За всё время";
+
+    const parameters = new URLSearchParams();
+    if (dateFrom) parameters.set("dateFrom", dateFrom);
+    if (dateTo) parameters.set("dateTo", dateTo);
+    const query = parameters.toString();
+
+    try {
+        const summary = await requestApi(query ? `/api/expenses/summary?${query}` : "/api/expenses/summary");
+        renderSummary(summary);
+    } catch (error) {
+        summaryMessage.textContent = `Не удалось загрузить статистику. ${error.message}`;
+    }
+}
+
+async function refreshData() {
+    await Promise.all([loadExpenses(), loadSummary()]);
+}
+
+function applyCurrentMonth() {
+    if (busy) {
+        return;
+    }
+
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const prefix = `${year}-${String(month + 1).padStart(2, "0")}`;
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    filterDateFrom.value = `${prefix}-01`;
+    filterDateTo.value = `${prefix}-${lastDay}`;
+    filtersForm.requestSubmit();
+}
+
+async function applyFilters(event) {
+    event.preventDefault();
+    if (busy) {
+        return;
+    }
+
+    showError("");
+    showStatus("");
+    const dateFrom = filterDateFrom.value;
+    const dateTo = filterDateTo.value;
+    // HTML date inputs provide YYYY-MM-DD, so string comparison preserves date order.
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+        showError("Дата начала периода не должна быть позже даты окончания.");
+        filterDateFrom.focus();
+        return;
+    }
+
+    appliedFilters = {
+        dateFrom,
+        dateTo,
+        category: filterCategory.value,
+        search: filterSearch.value.trim()
+    };
+
+    setBusy(true);
+    try {
+        await refreshData();
+    } finally {
+        setBusy(false);
+    }
+}
+
+async function resetFilters() {
+    if (busy) {
+        return;
+    }
+
+    filtersForm.reset();
+    appliedFilters = {};
+    showError("");
+    showStatus("");
+    setBusy(true);
+    try {
+        await refreshData();
+    } finally {
+        setBusy(false);
     }
 }
 
@@ -138,8 +304,8 @@ async function addExpense(event) {
         descriptionInput.focus();
         return;
     }
-    if (!Number.isFinite(amount) || amount <= 0) {
-        showError("Сумма должна быть больше нуля.");
+    if (!isValidAmount(amountInput.value)) {
+        showError("Сумма должна быть от 0,01 до 999999999,99 и содержать не более двух знаков после запятой.");
         amountInput.focus();
         return;
     }
@@ -160,7 +326,7 @@ async function addExpense(event) {
         });
         expenseForm.reset();
         showStatus("Расход добавлен.");
-        await loadExpenses();
+        await refreshData();
     } catch (error) {
         showError(error.message);
     } finally {
@@ -179,7 +345,7 @@ async function deleteExpense(id) {
     try {
         await requestApi(`/api/expenses/${id}`, { method: "DELETE" });
         showStatus("Расход удалён.");
-        await loadExpenses();
+        await refreshData();
     } catch (error) {
         showError(error.message);
     } finally {
@@ -188,5 +354,8 @@ async function deleteExpense(id) {
 }
 
 expenseForm.addEventListener("submit", addExpense);
+filtersForm.addEventListener("submit", applyFilters);
+resetFiltersButton.addEventListener("click", resetFilters);
+currentMonthButton.addEventListener("click", applyCurrentMonth);
 setBusy(true);
-loadExpenses().finally(() => setBusy(false));
+refreshData().finally(() => setBusy(false));
