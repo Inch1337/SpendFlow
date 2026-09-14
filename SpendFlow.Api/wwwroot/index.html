@@ -32,8 +32,8 @@
                 </div>
 
                 <div class="form-field">
-                    <label for="date">Дата</label>
-                    <input id="date" name="date" type="date" required>
+                    <label for="date">Дата (dd/mm/yyyy)</label>
+                    <input id="date" name="date" type="text" placeholder="15/01/2026" maxlength="10" required>
                 </div>
 
                 <div class="form-field">
@@ -57,12 +57,12 @@
             <h2 id="expenses-heading">Расходы</h2>
             <form id="filters-form" class="filters-form">
                 <div class="form-field">
-                    <label for="filter-date-from">Дата от (включительно)</label>
-                    <input id="filter-date-from" name="dateFrom" type="date">
+                    <label for="filter-date-from">Дата от (dd/mm/yyyy, включительно)</label>
+                    <input id="filter-date-from" name="dateFrom" type="text" placeholder="01/01/2026" maxlength="10">
                 </div>
                 <div class="form-field">
-                    <label for="filter-date-to">Дата до (включительно)</label>
-                    <input id="filter-date-to" name="dateTo" type="date">
+                    <label for="filter-date-to">Дата до (dd/mm/yyyy, включительно)</label>
+                    <input id="filter-date-to" name="dateTo" type="text" placeholder="31/01/2026" maxlength="10">
                 </div>
                 <div class="form-field">
                     <label for="filter-category">Категория</label>

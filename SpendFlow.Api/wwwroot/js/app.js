@@ -31,7 +31,7 @@ const categoryNames = {
 };
 
 let busy = false;
-// Keep applied filters separate from edits that have not been submitted yet.
+
 let appliedFilters = {};
 
 function setBusy(value) {
@@ -81,7 +81,7 @@ async function requestApi(url, options = {}) {
         throw new Error("Не удалось выполнить запрос. Попробуйте позже.");
     }
 
-    // DELETE returns 204 with no JSON body.
+
     if (response.status === 204) {
         return null;
     }
@@ -90,6 +90,32 @@ async function requestApi(url, options = {}) {
 
 function formatAmount(amount) {
     return amount.toFixed(2).replace(".", ",");
+}
+
+function formatDate(value) {
+    return value.split("-").reverse().join("/");
+}
+
+function parseDate(value) {
+    const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
+    if (!match) return null;
+
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    const year = Number(match[3]);
+    if (year < 1 || month < 1 || month > 12) return null;
+
+    const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    if (day < 1 || day > daysInMonth[month - 1]) return null;
+
+    return `${match[3]}-${match[2]}-${match[1]}`;
+}
+
+function setExpenseFormDisabled(value) {
+    expenseForm.querySelectorAll("input, select").forEach(field => {
+        field.disabled = value;
+    });
 }
 
 function isValidAmount(value) {
@@ -101,8 +127,7 @@ function isValidAmount(value) {
     const match = /^(\d+\.?\d*|\.\d+)(?:e([+-]?\d+))?$/i.exec(value);
     if (!match) return false;
 
-    // Count decimal places in the original input, including scientific notation.
-    // Trailing zeros do not change the amount: 12.300 is the same as 12.30.
+
     const fraction = match[1].split(".")[1] ?? "";
     const trailingZeros = match[1].replace(".", "").match(/0*$/)[0].length;
     const decimalPlaces = fraction.length - Number(match[2] ?? 0) - trailingZeros;
@@ -118,9 +143,9 @@ function renderExpenses(expenses) {
 
     for (const expense of expenses) {
         const row = document.createElement("tr");
-        // Date is a calendar date: format it without time zone conversion.
+
         const values = [
-            expense.date.split("-").reverse().join("."),
+            formatDate(expense.date),
             expense.description,
             categoryNames[expense.category] ?? expense.category,
             formatAmount(expense.amount)
@@ -180,7 +205,7 @@ function renderSummary(summary) {
         amount.textContent = formatAmount(item.totalAmount);
         label.append(name, amount);
 
-        // Exact amounts are shown above the bars; zero totals avoid division by zero.
+
         const track = document.createElement("div");
         track.className = "bar-track";
         track.setAttribute("aria-hidden", "true");
@@ -203,9 +228,9 @@ async function loadSummary() {
     summaryMessage.textContent = "Загрузка статистики…";
 
     const { dateFrom, dateTo } = appliedFilters;
-    const from = dateFrom ? dateFrom.split("-").reverse().join(".") : "";
-    const to = dateTo ? dateTo.split("-").reverse().join(".") : "";
-    summaryPeriod.textContent = from && to ? `Период: ${from} — ${to}`
+    const from = dateFrom ? formatDate(dateFrom) : "";
+    const to = dateTo ? formatDate(dateTo) : "";
+    summaryPeriod.textContent = from && to ? `Период: ${from} - ${to}`
         : from ? `Начиная с ${from}` : to ? `По ${to} включительно` : "За всё время";
 
     const parameters = new URLSearchParams();
@@ -235,8 +260,8 @@ function applyCurrentMonth() {
     const month = today.getMonth();
     const prefix = `${year}-${String(month + 1).padStart(2, "0")}`;
     const lastDay = new Date(year, month + 1, 0).getDate();
-    filterDateFrom.value = `${prefix}-01`;
-    filterDateTo.value = `${prefix}-${lastDay}`;
+    filterDateFrom.value = formatDate(`${prefix}-01`);
+    filterDateTo.value = formatDate(`${prefix}-${lastDay}`);
     filtersForm.requestSubmit();
 }
 
@@ -248,9 +273,15 @@ async function applyFilters(event) {
 
     showError("");
     showStatus("");
-    const dateFrom = filterDateFrom.value;
-    const dateTo = filterDateTo.value;
-    // HTML date inputs provide YYYY-MM-DD, so string comparison preserves date order.
+    const dateFrom = filterDateFrom.value ? parseDate(filterDateFrom.value) : "";
+    const dateTo = filterDateTo.value ? parseDate(filterDateTo.value) : "";
+
+    if (dateFrom === null || dateTo === null) {
+        showError("Введите существующую дату периода в формате dd/mm/yyyy, например 15/01/2026.");
+        (dateFrom === null ? filterDateFrom : filterDateTo).focus();
+        return;
+    }
+
     if (dateFrom && dateTo && dateFrom > dateTo) {
         showError("Дата начала периода не должна быть позже даты окончания.");
         filterDateFrom.focus();
@@ -310,14 +341,22 @@ async function addExpense(event) {
         return;
     }
 
+    const date = parseDate(dateInput.value);
+    if (date === null) {
+        showError("Введите существующую дату в формате dd/mm/yyyy, например 15/01/2026.");
+        dateInput.focus();
+        return;
+    }
+
     const request = {
         description,
         amount,
-        date: dateInput.value,
+        date,
         category: categoryInput.value
     };
 
     setBusy(true);
+    setExpenseFormDisabled(true);
     try {
         await requestApi("/api/expenses", {
             method: "POST",
@@ -330,6 +369,7 @@ async function addExpense(event) {
     } catch (error) {
         showError(error.message);
     } finally {
+        setExpenseFormDisabled(false);
         setBusy(false);
     }
 }
