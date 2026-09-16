@@ -92,24 +92,16 @@ function formatAmount(amount) {
     return amount.toFixed(2).replace(".", ",");
 }
 
-function formatDate(value) {
-    return value.split("-").reverse().join("/");
-}
+const calendarDateFormatter = new Intl.DateTimeFormat(undefined, {
+    year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC"
+});
 
-function parseDate(value) {
-    const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
-    if (!match) return null;
-
-    const day = Number(match[1]);
-    const month = Number(match[2]);
-    const year = Number(match[3]);
-    if (year < 1 || month < 1 || month > 12) return null;
-
-    const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-    const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    if (day < 1 || day > daysInMonth[month - 1]) return null;
-
-    return `${match[3]}-${match[2]}-${match[1]}`;
+function formatCalendarDate(value) {
+    const [year, month, day] = value.split("-").map(Number);
+    // UTC is used only for display, preserving the calendar day in every user time zone.
+    const date = new Date(0);
+    date.setUTCFullYear(year, month - 1, day);
+    return calendarDateFormatter.format(date);
 }
 
 function setExpenseFormDisabled(value) {
@@ -145,7 +137,7 @@ function renderExpenses(expenses) {
         const row = document.createElement("tr");
 
         const values = [
-            formatDate(expense.date),
+            formatCalendarDate(expense.date),
             expense.description,
             categoryNames[expense.category] ?? expense.category,
             formatAmount(expense.amount)
@@ -228,8 +220,8 @@ async function loadSummary() {
     summaryMessage.textContent = "Загрузка статистики…";
 
     const { dateFrom, dateTo } = appliedFilters;
-    const from = dateFrom ? formatDate(dateFrom) : "";
-    const to = dateTo ? formatDate(dateTo) : "";
+    const from = dateFrom ? formatCalendarDate(dateFrom) : "";
+    const to = dateTo ? formatCalendarDate(dateTo) : "";
     summaryPeriod.textContent = from && to ? `Период: ${from} - ${to}`
         : from ? `Начиная с ${from}` : to ? `По ${to} включительно` : "За всё время";
 
@@ -260,8 +252,8 @@ function applyCurrentMonth() {
     const month = today.getMonth();
     const prefix = `${year}-${String(month + 1).padStart(2, "0")}`;
     const lastDay = new Date(year, month + 1, 0).getDate();
-    filterDateFrom.value = formatDate(`${prefix}-01`);
-    filterDateTo.value = formatDate(`${prefix}-${lastDay}`);
+    filterDateFrom.value = `${prefix}-01`;
+    filterDateTo.value = `${prefix}-${lastDay}`;
     filtersForm.requestSubmit();
 }
 
@@ -273,14 +265,8 @@ async function applyFilters(event) {
 
     showError("");
     showStatus("");
-    const dateFrom = filterDateFrom.value ? parseDate(filterDateFrom.value) : "";
-    const dateTo = filterDateTo.value ? parseDate(filterDateTo.value) : "";
-
-    if (dateFrom === null || dateTo === null) {
-        showError("Введите существующую дату периода в формате dd/mm/yyyy, например 15/01/2026.");
-        (dateFrom === null ? filterDateFrom : filterDateTo).focus();
-        return;
-    }
+    const dateFrom = filterDateFrom.value;
+    const dateTo = filterDateTo.value;
 
     if (dateFrom && dateTo && dateFrom > dateTo) {
         showError("Дата начала периода не должна быть позже даты окончания.");
@@ -341,12 +327,7 @@ async function addExpense(event) {
         return;
     }
 
-    const date = parseDate(dateInput.value);
-    if (date === null) {
-        showError("Введите существующую дату в формате dd/mm/yyyy, например 15/01/2026.");
-        dateInput.focus();
-        return;
-    }
+    const date = dateInput.value;
 
     const request = {
         description,
