@@ -11,7 +11,6 @@ namespace SpendFlow.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Preserve the UTC calendar date regardless of the database session time zone.
             migrationBuilder.Sql("""
                 ALTER TABLE "Expenses"
                 ALTER COLUMN "Date" TYPE date
@@ -22,7 +21,6 @@ namespace SpendFlow.Api.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Up discards the original time; rollback restores midnight UTC.
             migrationBuilder.Sql("""
                 ALTER TABLE "Expenses"
                 ALTER COLUMN "Date" TYPE timestamp with time zone
